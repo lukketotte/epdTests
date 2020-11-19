@@ -1,21 +1,50 @@
 module NormTest
 
-export test, α, L, S, IM
+export test, α, L, R, S, IM
 
 include("ep.jl")
 using .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
 
+"""
+L function for the EPD, under assumption p = 2
+"""
 function L(y::T, μ::T, σ::T) where {T <: Real}
     gamma(3/2) * abs(y - μ) / σ
 end
 
 """
-Computes the score function wrt p & σ
+L function for the SEPD
+"""
+function L(y::T, μ::T, σ::T, α::T) where {T <: Real}
+    y < μ ? L(y, μ, σ) / (2*α) : 0
+end
+
+"""
+R function for the SEPD
+"""
+function R(y::T, μ::T, σ::T, α::T) where {T <: Real}
+    y >= μ ? L(y, μ, σ) / (2*(1-α)) : 0
+end
+
+"""
+Computes the score function wrt p & σ for the EPD
 """
 function S(y::T, μ::T, σ::T) where{T <: Real}
     ℓ = L(y, μ, σ)
     S_p = ℓ^2*(1/2 * digamma(3/2) - log(ℓ))
     S_σ = 2/σ * ℓ^2 - 1/σ
+    return S_p, S_σ
+end
+
+"""
+Computes the score functions wrt p & σ for the SEPD
+"""
+function S(y::T, μ::T, σ::T, α::T) where{T <: Real}
+    l = L(y, μ, σ, α)
+    r = R(y, μ, σ, α)
+    S_p = l == 0. ? r^2*(1-log(r)) : l^2*(1-log(l))
+    S_p = S_p * digamma(3/2) / 2
+    S_σ = (2 * (l + r) - 1) / σ
     return S_p, S_σ
 end
 
@@ -27,6 +56,21 @@ function S(y::Array{T, 1}, μ::T, σ::T) where{T <: Real}
     S_p = ℓ.^2 .* (1/2 * digamma(3/2) .- log.(ℓ))
     S_σ = 2/σ .* ℓ.^2 .- 1/σ
     return S_p, S_σ
+end
+
+"""
+Computes the score functions wrt p & σ for the SEPD
+"""
+function S(y::Array{T, 1}, μ::T, σ::T, α::T) where{T <: Real}
+    l = L.(y, μ, σ, α)
+    r = R.(y, μ, σ, α)
+    n = length(y)
+    S_p = similar(l)
+    for i = 1:n
+        S_p[i] = l[i] == 0. ?  r[i]^2*(1-log(r[i])) : l[i]^2*(1-log(l[i]))
+    end
+    S_σ = (2 .* (l .+ r) .- 1) ./ σ
+    return S_p .* (digamma(3/2) / 2), S_σ
 end
 
 """
@@ -48,8 +92,19 @@ function IM(n::N, p::T, σ::T, μ::T) where {T <: Real, N <: Int}
     ϕ₁₂, ϕ₂₃, ϕ₁₃ = 0, 0, -1/(σ*p)
     ϕ₂₂ = gamma(1/p)*gamma(2-1/p)/σ^2
     ϕ₃₃ = p/σ^2
-    n.*[ϕ₁₁ ϕ₁₂ ϕ₁₃ ; ϕ₁₂ ϕ₂₂ ϕ₂₃; ϕ₁₃ ϕ₂₃ ϕ₃₃]
+    #n.*[ϕ₁₁ ϕ₁₂ ϕ₁₃ ; ϕ₁₂ ϕ₂₂ ϕ₂₃; ϕ₁₃ ϕ₂₃ ϕ₃₃]
     [ϕ₁₁ ϕ₁₂ ϕ₁₃ ; ϕ₁₂ ϕ₂₂ ϕ₂₃; ϕ₁₃ ϕ₂₃ ϕ₃₃]
+end
+"""
+Computes the information matrix for the SEPD, θ = (p, μ, σ, α)
+"""
+function IM(n::N, p::T, σ::T, μ::T, α::T) where {T <: Real, N <: Int}
+    # Diagonal elements
+    ϕ_11 = (p + 1)/p^4 * trigamma(1 + 1/p)
+    ϕ_22 = Gamma(1/p) * Gamma(2 - 1/p) / (σ^2 * α * (1-α))
+    ϕ_33 = p/σ^2
+    ϕ_44 = (p+1)/(α*(1-α))
+    # Off-diag
 end
 
 """

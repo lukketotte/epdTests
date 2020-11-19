@@ -23,6 +23,19 @@ mle
 p = 2
 mle[2] / (1/(2 * p^(1/p) * gamma(1 + 1/p)))
 
+
+## AEP normTest
+x = rand(Aepd(0, 2.5, 2, 0.5), 10);
+
+S(x, 0.0, 1.0, 0.5)
+S(x, 0.0, 1.0)
+
+
+R(x[3], 0., 1., .5)[1]
+L(x[3], 0., 1.)[1]
+
+length(x)
+
 ## AEP check
 x = range(-6, 6, length = 500)
 plot(x, pdf.(Aepd(0, 1, 5, 0.85), x))

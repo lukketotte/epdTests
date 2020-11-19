@@ -1,9 +1,27 @@
 include("ep.jl")
 include("aep.jl")
 include("NormTest.jl")
-using .NormTest, .EPmethods, .AEPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
+using .NormTest, .EPmethods, .AEPmethods
+using SpecialFunctions, Statistics, LinearAlgebra, Distributions, Optim
 using KernelDensity, Plots, PlotThemes
 theme(:juno)
+
+## AEP MLE
+function loglike(θ, p, x)
+    μ, σ, α = θ
+    σ = exp(σ)
+    -log.(pdf.(Aepd(μ, σ, p, α), x)) |> sum
+end
+
+x = rand(Aepd(0, 2.5, 2, 0.5), 1000);
+params0 = [0.1, log(1.2), 0.5];
+optimum = optimize(b -> loglike(b, 2, x), params0, BFGS())
+mle = Optim.minimizer(optimum)
+mle[2] = exp(mle[2])
+mle
+
+p = 2
+mle[2] / (1/(2 * p^(1/p) * gamma(1 + 1/p)))
 
 ## AEP check
 x = range(-6, 6, length = 500)

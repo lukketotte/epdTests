@@ -24,6 +24,7 @@ function pdf(d::Aepd, x::Real)
 end
 
 function rand(rng::AbstractRNG, d::Aepd)
+    # OBS: σ = σ / K_{EP}(p) here
     μ, σ, p, α = d.mu, d.sigma, d.p, d.alpha
     u = rand(rng)
     W1, W2 = rand(Gamma(1/p, 1), 2)

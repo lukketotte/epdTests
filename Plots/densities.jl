@@ -20,14 +20,15 @@ feAlpha = FormatExpr(L"\alpha = {1}")
 
 p1 = plot(x1, data_1, label = labels, color = "black",
     linestyle = linestyles, grid = false, legend = false,
-    title = format(feAlpha, α1));
+    title = format(feAlpha, α1))
 
 p2 = plot(x2, data_2, label = labels, color = "black",
     linestyle = linestyles, grid = false, legend = true,
-    title = format(feAlpha, α2));
+    title = format(feAlpha, α2))
 
 plot(p2, p1, layout = (1,2))
-p = plot!(size = (500, 250))
+p = plot!(size = (600, 250))
+
 savefig(p, "aepd.png")
 
 x = range(-4, 4, length = 500)

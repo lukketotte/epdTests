@@ -13,16 +13,29 @@ function loglike(θ, p, x)
     -log.(pdf.(Aepd(μ, σ, p, α), x)) |> sum
 end
 
-x = rand(Aepd(0, 2.5, 2, 0.5), 1000);
-params0 = [0.1, log(1.2), 0.5];
+x = rand(Aepd(0, 1, 2, 0.5), 1000);
+params0 = [0.1, log(1.1), 0.5];
+mle = MLE(params0, 2., x)
+p = 2
+mle[2] / (1/(2 * p^(1/p) * gamma(1 + 1/p)))
+
+((p^(1/p) * gamma(1 + 1/p)))
+π/2
+
 optimum = optimize(b -> loglike(b, 2, x), params0, BFGS())
 mle = Optim.minimizer(optimum)
 mle[2] = exp(mle[2])
 mle
+Optim.converged(optimum)
+@warn("not working")
+
+Optim.minimizer(optimum)
+typeof(params0) <: Array{T} where {T <: Real}
 
 p = 2
 mle[2] / (1/(2 * p^(1/p) * gamma(1 + 1/p)))
 
+typeof(params0) <: Array{Float64, 1}
 
 ## AEP normTest
 x = rand(Aepd(0, 2.5, 2, 0.5), 10);

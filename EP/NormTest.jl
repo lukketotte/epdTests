@@ -149,7 +149,7 @@ end
 """
 Computes empirical level of C(α) test for the EPD
 """
-function simSize(d::D, n::N, nsim::N, size::Bool = true) where {D <: Epd, N <: Integer}
+function simSize(d::Epd, n::N, nsim::N, size::Bool = true) where {N <: Integer}
     sims = [0. for x in 1:nsim]
     for i in 1:nsim
         y = rand(d, n)
@@ -161,7 +161,6 @@ function simSize(d::D, n::N, nsim::N, size::Bool = true) where {D <: Epd, N <: I
         else
             sims[i] = t
         end
-
     end
     sims
 end
@@ -169,11 +168,18 @@ end
 """
 Computes empirical level of C(α) test for the SEPD
 """
-function simSize(d::D, n::N, nsim::N, size::Bool = true) where {D <: Aepd, N <: Integer}
+function simSize(d::Aepd, n::N, nsim::N, size::Bool = true,
+    θ::Array{T, 1} = ones(3)) where {N <: Integer, T <: Real}
     sims = [0. for x in 1:nsim]
     for i in 1:nsim
         y = rand(d, n)
-        μ, σ, α = MLE([0, exp(var(y)), 0.5], 2., y)
+        try
+            μ, σ, α = MLE(θ, 2., y)
+        catch err
+            if isa(err, ConvergenceError)
+                continue
+            end
+        end
         t = test(y, μ, √(σ * (π/2)), α)
         if size
             if abs(t) > 1.96
@@ -182,9 +188,8 @@ function simSize(d::D, n::N, nsim::N, size::Bool = true) where {D <: Aepd, N <: 
         else
             sims[i] = t
         end
-
     end
-    sims
+    sims[sims !== 0.]
 end
 
 end

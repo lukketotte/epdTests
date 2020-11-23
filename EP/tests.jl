@@ -6,6 +6,19 @@ using SpecialFunctions, Statistics, LinearAlgebra, Distributions, Optim
 using KernelDensity, Plots, PlotThemes
 theme(:juno)
 
+## RV generation not working for the AEPD
+x = range(-6, 6, length = 500)
+p, α = 1, 0.3
+
+k = kde(rand(Aepd(0, 1, p, 0.5), 1000));
+k2 = kde(rand(Epd(0, 1, p), 1000));
+x = range(-5, 5, length = 500);
+plot(x, pdf(k, x))
+plot!(x, pdf(k2, x))
+
+
+plot!(x, pdf.(Aepd(0, 1 * √(2/ π), p, α), x))
+
 ## AEP MLE
 function loglike(θ, p, x)
     μ, σ, α = θ

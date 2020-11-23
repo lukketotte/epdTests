@@ -1,9 +1,13 @@
 module AEPmethods
 
-export Aepd, MLE
+export Aepd, MLE, ConvergenceError
 
 using Distributions, SpecialFunctions, Random, Optim, Logging
 import Distributions.pdf, Base.rand
+
+struct ConvergenceError <:Exception
+    msg::String
+end
 
 struct Aepd <: ContinuousUnivariateDistribution
     mu::Real
@@ -42,11 +46,13 @@ end
 
 function MLE(θ::Array{T, 1}, p::T, x::Array{T, 1}) where {T <: Real}
     length(θ) === 3 || throw(ArgumentError("θ not of length 3"))
-    optimum = optimize(b -> loglik(b, p, x), θ, BFGS())
-    Optim.converged(optimum) || @warn("Not converged")
+    func = TwiceDifferentiable(vars -> loglik(vars, 2., x), ones(3), autodiff =:forward)
+    optimum = optimize(func, θ)
+    Optim.converged(optimum) || throw(ConvergenceError("Optimizer did not converge"))
     mle = Optim.minimizer(optimum)
     mle[2] = exp(mle[2])
     mle
 end
+
 
 end

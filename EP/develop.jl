@@ -12,34 +12,54 @@ test(x, μ, σ)
 test(x, μ, σ, α)
 
 ## size
-x = rand(Aepd(0, 2.5, 2, 0.7), 100);
-mean(x)
+x = rand(Aepd(0, 1, 2, 0.5), 1000);
+x = rand(Epd(0, 1, 2), 1000);
+test(x, 0., √(1. * π/2))
+test(x, 0., √(1 * π/2), 0.5)
 
-var(x) * π/2
-
-u, s, a = MLEs([mean(x), var(x), 0.8], 2., x);
-s * π/2
-
-
-function loglik(θ, p, x)
-    μ, σ, α = θ
-    σ = exp(σ)
-    -log.(pdf.(Aepd(μ, σ, p, α), x)) |> sum
+function simSizes(d::Aepd, n::N, nsim::N, size::Bool = true,
+    θ::Array{T, 1} = ones(3)) where {N <: Integer, T <: Real}
+    sims = [0. for x in 1:nsim]
+    for i in 1:nsim
+        y = rand(d, n)
+        μ, σ, α = try
+            MLE(θ, 2., y)
+        catch err
+            NaN, NaN, NaN
+        end
+        if μ === NaN
+            sims[i] = NaN
+        else
+            t = test(y, μ, σ * √(π/2), α)
+            if size
+                if abs(t) > 1.96
+                    sims[i] = 1
+                end
+            else
+                sims[i] = t
+            end
+        end
+    end
+    sims[sims .!== NaN]
 end
 
-x = rand(Aepd(0, 1, 2, 0.8), 5000);
-func = TwiceDifferentiable(vars -> loglik(vars, 2., x), ones(3), autodiff =:forward)
-
-opt = optimize(func, [mean(x), log(var(x)), 0.7])
-mles = Optim.minimizer(opt)
-mles[2] = exp(mles[2])
-println(mles)
-
-function MLEs(θ::Array{T, 1}, p::T, x::Array{T, 1}) where {T <: Real}
-    length(θ) === 3 || throw(ArgumentError("θ not of length 3"))
-    optimum = optimize(b -> loglik(b, p, x), θ)
-    Optim.converged(optimum) || @warn("Not converged")
-    mle = Optim.minimizer(optimum)
-    mle[2] = exp(mle[2])
-    mle
+function simSizes(d::Epd, n::N, nsim::N, size::Bool = true) where {N <: Integer}
+    sims = [0. for x in 1:nsim]
+    for i in 1:nsim
+        y = rand(d, n)
+        t = test(y, mean(y), √(var(y) * (π/2)))
+        if size
+            if abs(t) > 1.96
+                sims[i] = 1
+            end
+        else
+            sims[i] = t
+        end
+    end
+    sims
 end
+
+sims = simSizes(Epd(0, 1, 2), 1000, 1000) |> mean
+
+sims = simSizes(Aepd(0, 1, 2, 0.6), 50, 10000, true, [0, log(2), 0.6])
+mean(sims)

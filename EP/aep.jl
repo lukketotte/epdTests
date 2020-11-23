@@ -3,7 +3,7 @@ module AEPmethods
 export Aepd, MLE
 
 using Distributions, SpecialFunctions, Random, Optim, Logging
-import Distributions.pdf, Distributions.quantile, Base.rand
+import Distributions.pdf, Base.rand
 
 struct Aepd <: ContinuousUnivariateDistribution
     mu::Real

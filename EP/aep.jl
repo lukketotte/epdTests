@@ -27,14 +27,14 @@ function pdf(d::Aepd, x::Real)
     end
 end
 
+# TODO: this is not generating the same scale as the EPD
 function rand(rng::AbstractRNG, d::Aepd)
-    # OBS: σ = σ / K_{EP}(p) here
     μ, σ, p, α = d.mu, d.sigma, d.p, d.alpha
     u = rand(rng)
-    W1, W2 = rand(Gamma(1/p, 1), 2)
-    U1 = (sign(u - α) - 1) / (2 * gamma(1 + 1/p))
-    U2 = (sign(u - α) + 1) / (2 * gamma(1 + 1/p))
-    Y = α * W1^(1/p) * U1 + (1-α) * W2^(1/p) * U2
+    W = rand(Gamma(1/p, 1))
+    U1 = (sign(u - α) - 1) / 2*gamma(1 + 1/p)
+    U2 = (sign(u - α) + 1) / 2*gamma(1 + 1/p)
+    Y = α * W^(1/p) * U1 + (1-α) * W^(1/p) * U2
     σ*Y + μ
 end
 

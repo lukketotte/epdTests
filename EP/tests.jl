@@ -4,20 +4,19 @@ include("NormTest.jl")
 using .NormTest, .EPmethods, .AEPmethods
 using SpecialFunctions, Statistics, LinearAlgebra, Distributions, Optim
 using KernelDensity, Plots, PlotThemes
+import Base.rand
 theme(:juno)
 
 ## RV generation not working for the AEPD
 x = range(-6, 6, length = 500)
-p, α = 1, 0.3
+p, α = 2, 0.3
 
-k = kde(rand(Aepd(0, 1, p, 0.5), 1000));
+k = kde(rand(Aepd(0, 1, p, 0.5), 1000).*2*gamma(1 + 1/p));
 k2 = kde(rand(Epd(0, 1, p), 1000));
 x = range(-5, 5, length = 500);
-plot(x, pdf(k, x))
-plot!(x, pdf(k2, x))
+plot(x, pdf(k, x), label = "aepd")
+plot!(x, pdf(k2, x), label = "epd")
 
-
-plot!(x, pdf.(Aepd(0, 1 * √(2/ π), p, α), x))
 
 ## AEP MLE
 function loglike(θ, p, x)

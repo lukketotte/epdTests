@@ -12,6 +12,10 @@ test(x, μ, σ)
 test(x, μ, σ, α)
 
 ## size
+
+rand(Aepd(0, 1, 2, 0.5), 1000) |> var
+rand(Epd(0, 1, 2), 1000) |> var
+
 x = rand(Aepd(0, 1, 2, 0.5), 1000);
 x = rand(Epd(0, 1, 2), 1000);
 test(x, 0., √(1. * π/2))

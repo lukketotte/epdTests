@@ -27,7 +27,6 @@ function pdf(d::Aepd, x::Real)
     end
 end
 
-# TODO: this is not generating the same scale as the EPD
 function rand(rng::AbstractRNG, d::Aepd)
     μ, σ, p, α = d.mu, d.sigma, d.p, d.alpha
     # rescale it back

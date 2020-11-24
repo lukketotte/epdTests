@@ -1,7 +1,8 @@
 # relative imports not working with everywhere include
 @everywhere include(joinpath(@__DIR__, "ep.jl"))
+@everywhere include(joinpath(@__DIR__, "aep.jl"))
 @everywhere include(joinpath(@__DIR__, "NormTest.jl"))
-@everywhere using .NormTest, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
+@everywhere using .NormTest, .AEPmethods, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
 
 using KernelDensity, Plots, PlotThemes, LaTeXStrings
 theme(:default)
@@ -9,7 +10,17 @@ theme(:default)
 ## Power and size
 
 @everywhere function αPar(p::T, n::N = 50, nsim::N = 10000, size::Bool = false) where {T, N <: Real}
-    sim = α(Epd(0.0, 1.0, p), n, nsim, size)
+    sim = simSize(Epd(0.0, 1.0, p), n, nsim, size)
+    if size
+        mean(sim)
+    else
+        sim
+    end
+end
+
+@everywhere function αPar(p::T, n::N = 50, nsim::N = 10000, size::Bool = false,
+    θ::Array{T, 1} = ones(3)) where {T, N <: Real}
+    sim = simSize(Aepd(0.0, 1.0, p, θ[3]), n, nsim, size, θ)
     if size
         mean(sim)
     else
@@ -24,8 +35,13 @@ kurt = range(2, 5, length = 70)
 β₂ = pmap(p -> αPar(p, 200, nsim, true), kurt)
 
 α₀ = pmap(n -> αPar(2., n, nsim, true), [25, 50, 100, 250])
-println(1 .- α₀)
+println(α₀)
 
+α = pmap(n -> αPar(2., n, nsim, true, [0, log(2), 0.5]), [25, 50, 100, 250])
+println(α)
+
+α = pmap(N -> αPar(2., 5000, N, true, [0, log(2), 0.5]), [1000 for x in 1:4])
+mean(α)
 
 ## power
 plot(kurt, 1 .- β₀, label = "n=50", xlab="kurtosis",
@@ -61,10 +77,15 @@ function qqPlot(obs, F, title)
          markersize = 2)
     plot!(obs, obs, label = "")
 end
-n = 250
-qq = αPar(2., n, 10000)
+
+n = 100
+# qq = αPar(2., n, 10000)
+q = pmap(N -> αPar(2., n, N, false, [0, log(2), 0.5]), [2500 for x in 1:4])
+q = pmap(N -> αPar(2., n, N, false), [2500 for x in 1:4])
+qq = vcat(q[1], q[2], q[3], q[4])
 qqPlot(qq, Normal(0,1), "QQ plot, n = " * string(n))
 
-qq = pmap(n -> αPar(2., n, 100), [25, 50, 100, 250])
-
-qq[1]
+k = kde(qq)
+x = range(-4, 4, length = 500)
+plot(x, pdf(k, x), label = "aepd")
+plot!(x, pdf.(Normal(), x))

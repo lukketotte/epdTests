@@ -146,10 +146,12 @@ function test(y::Array{T, 1}, μ::T, σ::T, α::T) where {T <: Real}
     ((sum(S_p) - β * sum(S_σ)) / √(n*V))
 end
 
+# TODO: why does e.g. d::Epd not work when using import?
 """
 Computes empirical level of C(α) test for the EPD
 """
-function simSize(d::Epd, n::N, nsim::N, size::Bool = true) where {N <: Integer}
+function simSize(d::D, n::N, nsim::N, size::Bool = true) where
+    {D <: ContinuousUnivariateDistribution, N <: Integer}
     sims = [0. for x in 1:nsim]
     for i in 1:nsim
         y = rand(d, n)
@@ -168,28 +170,30 @@ end
 """
 Computes empirical level of C(α) test for the SEPD
 """
-function simSize(d::Aepd, n::N, nsim::N, size::Bool = true,
-    θ::Array{T, 1} = ones(3)) where {N <: Integer, T <: Real}
+function simSize(d::D, n::N, nsim::N, size::Bool = true,
+    θ::Array{T, 1} = ones(3)) where {D <: ContinuousUnivariateDistribution, N <: Integer, T <: Real}
     sims = [0. for x in 1:nsim]
     for i in 1:nsim
         y = rand(d, n)
-        try
-            μ, σ, α = MLE(θ, 2., y)
+        μ, σ, α = try
+            MLE(θ, 2., y)
         catch err
-            if isa(err, ConvergenceError)
-                continue
-            end
+            NaN, NaN, NaN
         end
-        t = test(y, μ, √(σ * (π/2)), α)
-        if size
-            if abs(t) > 1.96
-                sims[i] = 1
-            end
+        if μ === NaN || (α < 0 && α > 1)
+            sims[i] = NaN
         else
-            sims[i] = t
+            t = test(y, μ, σ*√(π/2), α)
+            if size
+                if abs(t) > 1.96
+                    sims[i] = 1
+                end
+            else
+                sims[i] = t
+            end
         end
     end
-    sims[sims !== 0.]
+    sims[sims .!== NaN]
 end
 
 end

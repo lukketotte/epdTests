@@ -16,17 +16,31 @@ NormTest.components(p, σ, μ, 0.9)
 
 ## size
 
-rand(Aepd(0, 1, 2, 0.5), 1000) |> var
-rand(Epd(0, 1, 2), 1000) |> var
+# works good, but not in the simSizes function
+x = rand(Aepd(0, 1, 4., 0.4), 1000)
+a, b, c = try
+            MLE([0, log(2), 0.4], 4., x)
+        catch err
+            NaN, NaN, NaN
+        end
+a === NaN || test(x, a, b*√(π/2), c)
 
-x = rand(Aepd(0, 1, 2, 0.5), 1000);
+b*√(π/2)
+
+ml = zeros(2, 3)
+ml[1,:] = [a b c]
+ml
+rand(Epd(0, 1, 2), 10000) |> mean
+
+x = rand(Aepd(0, 1, 2, 0.3), 1000);
 x = rand(Epd(0, 1, 2), 1000);
 test(x, 0., √(1. * π/2))
-test(x, 0., √(1 * π/2), 0.5)
+test(x, 0., √(1 * π/2), 0.3)
 
 function simSizes(d::Aepd, n::N, nsim::N, size::Bool = true,
     θ::Array{T, 1} = ones(3)) where {N <: Integer, T <: Real}
     sims = [0. for x in 1:nsim]
+    mles = zeros(nsim, 3)
     for i in 1:nsim
         y = rand(d, n)
         μ, σ, α = try
@@ -34,10 +48,11 @@ function simSizes(d::Aepd, n::N, nsim::N, size::Bool = true,
         catch err
             NaN, NaN, NaN
         end
-        if μ === NaN
+        mles[i,:] = [μ, σ, α]
+        if μ === NaN || (α < 0 && α > 1)
             sims[i] = NaN
         else
-            t = test(y, μ, σ * √(π/2), α)
+            t = test(y, μ, σ*√(π/2), α)
             if size
                 if abs(t) > 1.96
                     sims[i] = 1
@@ -47,7 +62,7 @@ function simSizes(d::Aepd, n::N, nsim::N, size::Bool = true,
             end
         end
     end
-    sims[sims .!== NaN]
+    sims[sims .!== NaN], mles
 end
 
 function simSizes(d::Epd, n::N, nsim::N, size::Bool = true) where {N <: Integer}
@@ -66,7 +81,9 @@ function simSizes(d::Epd, n::N, nsim::N, size::Bool = true) where {N <: Integer}
     sims
 end
 
-sims = simSizes(Epd(0, 1, 2), 1000, 1000) |> mean
+sims = simSizes(Epd(0, 1, 4), 50, 500) |> mean
 
-sims = simSizes(Aepd(0, 1, 2, 0.5), 500, 1500, true, [0, log(2), 0.5])
+sims, ml = simSizes(Aepd(0, 1, 2., 0.5), 250, 10000, true, [0, log(2), 0.5])
 mean(sims)
+
+simSize(Aepd(0, 1, 2.3, 0.5), 250, 1000, true, [0, log(2), 0.5]) |> mean

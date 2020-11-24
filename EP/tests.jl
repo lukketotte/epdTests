@@ -11,8 +11,8 @@ theme(:juno)
 x = range(-6, 6, length = 500)
 p, α = 2, 0.5
 
-k = kde(rand(Aepd(0, 1, p, α), 2000));
-k2 = kde(rand(Epd(0, 1, p), 2000));
+k = kde(rand(Aepd(0, 2, p, α), 2000));
+k2 = kde(rand(Epd(0, 2, p), 2000));
 x = range(-5, 5, length = 500);
 plot(x, pdf(k, x), label = "aepd")
 plot!(x, pdf(k2, x), label = "epd")

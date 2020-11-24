@@ -21,7 +21,7 @@ end
 
 function quantile(d::Epd, x::Real)
     ν, μ, σ, p = 2*x-1, d.mu, d.sigma, d.p
-    G = quantile(Gamma(1/p, 1/σ^p), abs(ν))
+    G = quantile(Gamma(1/p, σ^p), abs(ν))
     sign(ν) * (p*G)^(1/p)
 end
 

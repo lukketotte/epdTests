@@ -1,6 +1,6 @@
 module NormTest
 
-export test, simSize, L, R, S, IM
+export test, simSize, L, R, S, IM, components
 
 include("ep.jl")
 include("aep.jl")

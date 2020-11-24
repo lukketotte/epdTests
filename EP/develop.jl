@@ -11,6 +11,9 @@ p, σ, μ, α = 2., 1., 0., 0.5
 test(x, μ, σ)
 test(x, μ, σ, α)
 
+NormTest.components(p, σ, μ)
+NormTest.components(p, σ, μ, 0.9)
+
 ## size
 
 rand(Aepd(0, 1, 2, 0.5), 1000) |> var
@@ -65,5 +68,5 @@ end
 
 sims = simSizes(Epd(0, 1, 2), 1000, 1000) |> mean
 
-sims = simSizes(Aepd(0, 1, 2, 0.6), 50, 10000, true, [0, log(2), 0.6])
+sims = simSizes(Aepd(0, 1, 2, 0.5), 500, 1500, true, [0, log(2), 0.5])
 mean(sims)

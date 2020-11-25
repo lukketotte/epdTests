@@ -8,10 +8,16 @@ using SpecialFunctions, Statistics, LinearAlgebra, Distributions, Optim
 x = rand(Aepd(0, 2.5, 2, 0.5), 10);
 p, σ, μ, α = 2., 1., 0., 0.5
 
+x = rand(Epd(0, 1, 2), 100)
+test(x, mean(x), √(var(x) * (π/2))) |> println
+test(x, mean(x), (π/2)*√(var(x))) |> println
+println()
+
 test(x, μ, σ)
 test(x, μ, σ, α)
 
 NormTest.components(p, σ, μ)
+
 NormTest.components(p, σ, μ, 0.9)
 
 ## size

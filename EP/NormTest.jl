@@ -17,14 +17,14 @@ end
 L function for the SEPD
 """
 function L(y::T, μ::T, σ::T, α::T) where {T <: Real}
-    y < μ ? L(y, μ, σ) / (2*α) : 0
+    y < μ ? L(y, μ, σ) / (α) : 0
 end
 
 """
 R function for the SEPD
 """
 function R(y::T, μ::T, σ::T, α::T) where {T <: Real}
-    y >= μ ? L(y, μ, σ) / (2*(1-α)) : 0
+    y >= μ ? L(y, μ, σ) / ((1-α)) : 0
 end
 
 """
@@ -83,7 +83,6 @@ function IM(p::T, σ::T, μ::T) where {T <: Real, N <: Int}
     ϕ₁₂, ϕ₂₃, ϕ₁₃ = 0, 0, -1/(σ*p)
     ϕ₂₂ = gamma(1/p)*gamma(2-1/p)/σ^2
     ϕ₃₃ = p/σ^2
-    #n.*[ϕ₁₁ ϕ₁₂ ϕ₁₃ ; ϕ₁₂ ϕ₂₂ ϕ₂₃; ϕ₁₃ ϕ₂₃ ϕ₃₃]
     [ϕ₁₁ ϕ₁₂ ϕ₁₃ ; ϕ₁₂ ϕ₂₂ ϕ₂₃; ϕ₁₃ ϕ₂₃ ϕ₃₃]
 end
 """
@@ -170,8 +169,8 @@ end
 """
 Computes empirical level of C(α) test for the SEPD
 """
-function simSize(d::D, n::N, nsim::N, size::Bool = true,
-    θ::Array{T, 1} = ones(3)) where {D <: ContinuousUnivariateDistribution, N <: Integer, T <: Real}
+function simSize(d::D, n::N, nsim::N, θ::Array{T, 1}, size::Bool = true) where
+    {D <: ContinuousUnivariateDistribution, N <: Integer, T <: Real}
     sims = [0. for x in 1:nsim]
     for i in 1:nsim
         y = rand(d, n)

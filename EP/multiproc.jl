@@ -18,9 +18,8 @@ theme(:default)
     end
 end
 
-@everywhere function αPar(p::T, n::N = 50, nsim::N = 10000, size::Bool = false,
-    θ::Array{T, 1} = ones(3)) where {T, N <: Real}
-    sim = simSize(Aepd(0.0, 1.0, p, θ[3]), n, nsim, size, θ)
+@everywhere function αPar(p::T, θ::Array{T, 1}, n::N = 50, nsim::N = 10000, size::Bool = false) where {T, N <: Real}
+    sim = simSize(Aepd(0.0, 1.0, p, θ[3]), n, nsim,θ,size)
     if size
         mean(sim)
     else
@@ -64,6 +63,10 @@ end
 y = rand(Epd(0,1,2), 100000)
 (L.(y, mean(y), √(var(y) * (π/2))).^2) .* log.(L.(y, mean(y), √(var(y) * (π/2)))) |> mean
 
+π/2
+p = 2
+2*p^(1/p) * gamma(1 + 1/p)
+
 pmap(n -> lln(n, 1000), [2000 for x in 1:4]) |> mean
 
 ## QQ plot
@@ -78,14 +81,31 @@ function qqPlot(obs, F, title)
     plot!(obs, obs, label = "")
 end
 
-n = 100
-# qq = αPar(2., n, 10000)
-q = pmap(N -> αPar(2., n, N, false, [0, log(2), 0.5]), [2500 for x in 1:4])
-q = pmap(N -> αPar(2., n, N, false), [2500 for x in 1:4])
-qq = vcat(q[1], q[2], q[3], q[4])
-qqPlot(qq, Normal(0,1), "QQ plot, n = " * string(n))
 
-k = kde(qq)
-x = range(-4, 4, length = 500)
+res = Array{Float64, 1}[]
+
+n, nsim = 4000, 20000
+# q = pmap(N -> αPar(2., [0, log(2), 0.5], n, N, false), [1000 for x in 1:4])
+for i in 1:10
+    print(string(i)*" ")
+    q = pmap(N -> αPar(2., n, N, false), [nsim for x in 1:4])
+    push!(res, vcat(q[1], q[2], q[3], q[4]))
+end
+res = map(i -> mean(res[i] .> 1.96), 1:10)
+
+
+
+qq = vcat(q[1], q[2], q[3], q[4])
+(abs.(qq) .> 1.96) |> mean
+
+qqPlot(qq, Normal(0,1), "QQ plot, n = " * string(n))
+k, x = kde(qq), range(-4, 4, length = 500);
 plot(x, pdf(k, x), label = "aepd")
 plot!(x, pdf.(Normal(), x))
+
+
+k, x = kde(qq.^2), range(0, 6, length = 500);
+plot(x, pdf(k, x))
+plot!(x, pdf.(Chisq(1), x))
+
+qqPlot(qq.^2, Chisq(1), "n = " * string(n))

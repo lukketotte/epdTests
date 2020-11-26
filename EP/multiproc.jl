@@ -8,7 +8,6 @@ using KernelDensity, Plots, PlotThemes, LaTeXStrings
 theme(:default)
 
 ## Power and size
-
 @everywhere function αPar(p::T, n::N = 50, nsim::N = 10000, size::Bool = false) where {T, N <: Real}
     sim = simSize(Epd(0.0, 1.0, p), n, nsim, size)
     if size
@@ -82,17 +81,30 @@ function qqPlot(obs, F, title)
 end
 
 
-res = Array{Float64, 1}[]
 
-n, nsim = 4000, 20000
+n, nsim = 4000, 2500
 # q = pmap(N -> αPar(2., [0, log(2), 0.5], n, N, false), [1000 for x in 1:4])
+res = Array{Float64, 1}[]
 for i in 1:10
     print(string(i)*" ")
     q = pmap(N -> αPar(2., n, N, false), [nsim for x in 1:4])
     push!(res, vcat(q[1], q[2], q[3], q[4]))
 end
-res = map(i -> mean(res[i] .> 1.96), 1:10)
 
+res = map(i -> mean(abs.(res[i]) .> 1.96), 1:10)
+mean(res)
+
+n, nsim = 4000, 2500
+# q = pmap(N -> αPar(2., [0, log(2), 0.5], n, N, false), [1000 for x in 1:4])
+res = Array{Float64, 1}[]
+for i in 1:10
+    print(string(i)*" ")
+    q = pmap(N -> αPar(2., [0, log(2), 0.7], n, N, false), [nsim for x in 1:4])
+    push!(res, vcat(q[1], q[2], q[3], q[4]))
+end
+
+res = map(i -> mean(abs.(res[i]) .> 1.96), 1:10)
+mean(res) |> println
 
 
 qq = vcat(q[1], q[2], q[3], q[4])

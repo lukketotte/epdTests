@@ -5,20 +5,39 @@ include("NormTest.jl")
 using .NormTest, .EPmethods, .AEPmethods
 using SpecialFunctions, Statistics, LinearAlgebra, Distributions, Optim
 
-x = rand(Aepd(0, 2.5, 2, 0.5), 10);
+x = rand(Aepd(0, 1, 2, 0.5), 1000);
 p, σ, μ, α = 2., 1., 0., 0.5
 
-x = rand(Epd(0, 1, 2), 100)
-test(x, mean(x), √(var(x) * (π/2))) |> println
-test(x, mean(x), (π/2)*√(var(x))) |> println
-println()
+test(x, μ, σ* √(π/2), α)
+test(x, μ, σ * √(π/2))
 
+n = 500
+x = rand(Epd(0, 1, 2.2), n)
+# x = rand(Normal(), n)
+test(x, mean(x),  √(var(x) * (π/2)))
+
+simSize(Epd(0, 1, 2.5), 500, 1000) |> mean
+simSize(Epd(0, 1, 2), 500, 10000) |> mean
+
+
+β, V = NormTest.components(2., mean(x),  √(var(x) * (π/2)))
+S_p, S_s = S(x, mean(x),  √(var(x) * (π/2)))
+sum(S_p)
+sum(S_s)
+(sum(S_p) - β * sum(S_s)) / √(n*V)
+
+√(n*V)
+
+test(x, mean(x), √(var(x) * (π/2))) |> println
+
+p, σ, μ, α = 2., 1., 0., 0.7
+x = rand(Aepd(μ, σ, p, α), 10)
 test(x, μ, σ)
 test(x, μ, σ, α)
 
 NormTest.components(p, σ, μ)
 
-NormTest.components(p, σ, μ, 0.9)
+NormTest.components(p, σ, μ, 0.5)
 
 ## size
 

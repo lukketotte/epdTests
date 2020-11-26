@@ -17,14 +17,14 @@ end
 L function for the SEPD
 """
 function L(y::T, μ::T, σ::T, α::T) where {T <: Real}
-    y < μ ? L(y, μ, σ) / (α) : 0
+    y < μ ? L(y, μ, σ) / (2*α) : 0
 end
 
 """
 R function for the SEPD
 """
 function R(y::T, μ::T, σ::T, α::T) where {T <: Real}
-    y >= μ ? L(y, μ, σ) / ((1-α)) : 0
+    y >= μ ? L(y, μ, σ) / (2*(1-α)) : 0
 end
 
 """

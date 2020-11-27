@@ -94,7 +94,7 @@ end
 res = map(i -> mean(abs.(res[i]) .> 1.96), 1:10)
 mean(res)
 
-n, nsim = 4000, 2500
+n, nsim = 6000, 3000
 # q = pmap(N -> αPar(2., [0, log(2), 0.5], n, N, false), [1000 for x in 1:4])
 res = Array{Float64, 1}[]
 for i in 1:10

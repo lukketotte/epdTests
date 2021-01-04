@@ -1,13 +1,13 @@
 module AEPmethods
 
-export Aepd, MLE, ConvergenceError
+export Aepd, MLE
 
 using Distributions, SpecialFunctions, Random, Optim, Logging
 import Distributions.pdf, Base.rand
 
-struct ConvergenceError <:Exception
-    msg::String
-end
+include("structs.jl")
+using .Structs
+
 
 struct Aepd <: ContinuousUnivariateDistribution
     mu::Real

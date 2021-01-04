@@ -2,7 +2,7 @@
 @everywhere include(joinpath(@__DIR__, "ep.jl"))
 @everywhere include(joinpath(@__DIR__, "aep.jl"))
 @everywhere include(joinpath(@__DIR__, "NormTest.jl"))
-@everywhere using .NormTest, .AEPmethods, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
+@everywhere using .NormTest, .AEPmethods, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions, DataFrames
 
 using KernelDensity, Plots, PlotThemes, LaTeXStrings
 theme(:default)
@@ -10,7 +10,7 @@ theme(:default)
 
 ## Power and size
 @everywhere function αPar(p::T, n::N = 50, nsim::N = 10000, size::Bool = false, α::T = 0.05) where {T, N <: Real}
-    sim = simSize(Epd(0.0, 1.0, p), n, nsim, size, α)
+    sim = simSize(Epd(0.0, 1.0, p), n, nsim, size, α, p)
     if size
         mean(sim)
     else
@@ -26,6 +26,55 @@ end
         sim
     end
 end
+
+## Simulation
+res = Array{Float64, 1}[]
+for i in 1:10
+    print(string(i)*" ")
+    q = pmap(N -> αPar(2., [0, log(2), 0.7], n, N, false), [nsim for x in 1:4])
+    push!(res, vcat(q[1], q[2], q[3], q[4]))
+end
+
+@everywhere function simulation(p::Array{T, 1} = [1., 2., 3.], n::Array{N, 1} = [50, 100, 500, 1000, 2000],
+        size::Bool = false, α::T = 0.05; nsim::N = 10000) where {T, N <: Real}
+    simData = DataFrame(n = repeat(n, inner = length(p)), p = repeat(p, length(n)), value = 0.)
+    for i in 1:length(n)
+        print(string(n[i])*" ")
+        for j in 1:length(p)
+            res = Array{Float64, 1}[]
+            for i in 1:10
+                q = pmap(N -> αPar(p[j], n[i], N, false), [nsim for x in 1:4])
+                push!(res, vcat(q[1], q[2], q[3], q[4]))
+            end
+            z = quantile(Normal(), 1-α/2)
+            resAvg = map(i -> mean(abs.(res[i]) .> z), 1:10)
+            test[:, [:value]] .= ifelse.((test[!, :n] .== n[i]) .&( test[!, :p] .== p[j]), mean(resAvg), test[:, [:value]])
+        end
+    end
+    simData
+end
+
+simulation(nsim = 10)
+
+
+
+p = [1., 2., 3.]
+n = [50, 100, 500, 1000, 2000]
+
+repeat(n, inner = 3)
+repeat(p, 5)
+
+test = DataFrame(n = repeat(n, inner = 3), p = repeat(p, 5), value = 0.)
+
+test.value[1] = 0.1
+
+test.value[(test.p .=== 1.) .& (test.n .=== 50) ] = 0.5
+
+(test.p .=== 1.) .& (test.n .=== 50)
+
+test[:, [:value]] .= ifelse.((test[!, :n] .== 50) .&( test[!, :p] .== 2.), 0.6, test[:, [:value]])
+
+
 
 n, nsim = 100, 10000;
 kurt = range(1, 5, length = 160)
@@ -101,11 +150,11 @@ end
 res = map(i -> mean(abs.(res[i]) .> 1.96), 1:10)
 mean(res)
 
-n, nsim = 500, 3000
+n, nsim = 500, 10
 res = Array{Float64, 1}[]
 for i in 1:10
     print(string(i)*" ")
-    q = pmap(N -> αPar(2., n, N, false, 0.01), [nsim for x in 1:4])
+    q = pmap(N -> αPar(1., n, N, false, 0.01), [nsim for x in 1:4])
     push!(res, vcat(q[1], q[2], q[3], q[4]))
 end
 
@@ -115,7 +164,7 @@ mean(resAvg) |> println
 
 #
 
-n, nsim = 2000, 3000
+n, nsim = 500, 1000
 res = Array{Float64, 1}[]
 for i in 1:10
     print(string(i)*" ")

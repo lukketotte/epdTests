@@ -6,11 +6,12 @@ include("ep.jl")
 include("aep.jl")
 using .AEPmethods, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
 
+
 """
 L function for the EPD, under assumption p = 2
 """
-function L(y::T, μ::T, σ::T) where {T <: Real}
-    gamma(3/2) * abs(y - μ) / σ
+function L(y::T, μ::T, σ::T; p::T = 2.) where {T <: Real}
+    gamma(1 + 1/p) * abs(y - μ) / σ
 end
 
 """
@@ -27,13 +28,14 @@ function R(y::T, μ::T, σ::T, α::T) where {T <: Real}
     y >= μ ? L(y, μ, σ) / (2*(1-α)) : 0
 end
 
+
 """
 Computes the score function wrt p & σ for the EPD
 """
-function S(y::T, μ::T, σ::T) where{T <: Real}
-    ℓ = L(y, μ, σ)
-    S_p = ℓ^2*(1/2 * digamma(3/2) - log(ℓ))
-    S_σ = 2/σ * ℓ^2 - 1/σ
+function S(y::T, μ::T, σ::T; p::T = 2.) where{T <: Real}
+    ℓ = L(y, μ, σ, p = p)
+    S_p = ℓ^p * (1/p * digamma(1 + 1/p) - log(ℓ))
+    S_σ = p/σ * ℓ^p - 1/σ
     return S_p, S_σ
 end
 
@@ -52,10 +54,10 @@ end
 """
 Computes the score function wrt p & σ for a vector y
 """
-function S(y::Array{T, 1}, μ::T, σ::T) where{T <: Real}
-    ℓ = L.(y, μ, σ)
-    S_p = ℓ.^2 .* (1/2 * digamma(3/2) .- log.(ℓ))
-    S_σ = 2/σ .* ℓ.^2 .- 1/σ
+function S(y::Array{T, 1}, μ::T, σ::T; p::T = 2.) where{T <: Real}
+    ℓ = L.(y, μ, σ, p = p)
+    S_p = ℓ.^p .* (1/p * digamma(1 + 1/p) .- log.(ℓ))
+    S_σ = p/σ .* ℓ.^p .- 1/σ
     return S_p, S_σ
 end
 
@@ -128,10 +130,10 @@ end
 """
 Computes the C(α) test for the EPD
 """
-function test(y::Array{T, 1}, μ::T, σ::T) where {T <: Real}
+function test(y::Array{T, 1}, μ::T, σ::T; p::T = 2.) where {T <: Real}
     n = length(y)
-    S_p, S_σ = S(y, μ, σ)
-    β, V = components(2., σ, μ)
+    S_p, S_σ = S(y, μ, σ, p = p)
+    β, V = components(p, σ, μ)
     ((sum(S_p) - β * sum(S_σ)) / √(n*V))
 end
 
@@ -149,22 +151,37 @@ end
 """
 Computes empirical level of C(α) test for the EPD
 """
-function simSize(d::D, n::N, nsim::N, size::Bool = true, α::T = 0.05) where
+function simSize(d::D, n::N, nsim::N, size::Bool = true, α::T = 0.05, p::T = 2.) where
     {D <: ContinuousUnivariateDistribution, N <: Integer, T<: Real}
     sims = [0. for x in 1:nsim]
     z = quantile(Normal(), 1-α/2)
     for i in 1:nsim
         y = rand(d, n)
-        t = test(y, mean(y), √(var(y) * (π/2)))
-        if size
-            if abs(t) > z
-                sims[i] = 1
+        if p !== 2.
+            μ, σ = try
+                MleEpd([0, log(2.)], p, y)
+            catch err
+                NaN, NaN, NaN
             end
+            σ !== NaN ? exp(σ) : NaN
         else
-            sims[i] = t
+            μ = mean(y)
+            σ = √var(y)
+        end
+        if μ === NaN
+            sims[i] = NaN
+        else
+            t = test(y, μ, p^(1/p) * gamma(1 + 1/p) * σ, p = p)
+            if size
+                if abs(t) > z
+                    sims[i] = 1
+                end
+            else
+                sims[i] = t
+            end
         end
     end
-    sims
+    sims[sims .!== NaN]
 end
 
 """

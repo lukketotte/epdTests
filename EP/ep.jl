@@ -1,10 +1,12 @@
 module EPmethods
 
-export Epd
+export Epd, MleEpd
 
-using Distributions, SpecialFunctions, Random
+using Distributions, SpecialFunctions, Random, Optim
 import Distributions.pdf, Distributions.quantile, Base.rand
 
+include("structs.jl")
+using .Structs
 
 struct Epd <: ContinuousUnivariateDistribution
     mu::Real
@@ -28,6 +30,24 @@ end
 function rand(rng::AbstractRNG, d::Epd)
     r = rand(rng)
     quantile(d, r) + d.mu
+end
+
+
+## MLE for p != 2, not sure how to do this within distributions
+function loglikEPD(θ, p, x) where {T <: Real}
+    μ, σ = θ
+    σ = exp(σ)
+    -log.(pdf.(Epd(μ, σ, p), x)) |> sum
+end
+
+function MleEpd(θ::Array{T, 1}, p::T, x::Array{T, 1}) where {T <: Real}
+    length(θ) === 2 || throw(ArgumentError("θ not of length 2"))
+    func = TwiceDifferentiable(vars -> loglikEPD(vars, p, x), ones(2), autodiff =:forward)
+    optimum = optimize(func, θ)
+    Optim.converged(optimum) || throw(ConvergenceError("Optimizer did not converge"))
+    mle = Optim.minimizer(optimum)
+    mle[2] = exp(mle[2])
+    mle
 end
 
 end

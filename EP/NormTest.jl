@@ -149,14 +149,15 @@ end
 """
 Computes empirical level of C(α) test for the EPD
 """
-function simSize(d::D, n::N, nsim::N, size::Bool = true) where
-    {D <: ContinuousUnivariateDistribution, N <: Integer}
+function simSize(d::D, n::N, nsim::N, size::Bool = true, α::T = 0.05) where
+    {D <: ContinuousUnivariateDistribution, N <: Integer, T<: Real}
     sims = [0. for x in 1:nsim]
+    z = quantile(Normal(), 1-α/2)
     for i in 1:nsim
         y = rand(d, n)
         t = test(y, mean(y), √(var(y) * (π/2)))
         if size
-            if abs(t) > 1.96
+            if abs(t) > z
                 sims[i] = 1
             end
         else
@@ -169,22 +170,23 @@ end
 """
 Computes empirical level of C(α) test for the SEPD
 """
-function simSize(d::D, n::N, nsim::N, θ::Array{T, 1}, size::Bool = true) where
+function simSize(d::D, n::N, nsim::N, θ::Array{T, 1}, size::Bool = true, α::T = 0.05) where
     {D <: ContinuousUnivariateDistribution, N <: Integer, T <: Real}
     sims = [0. for x in 1:nsim]
+    z = quantile(Normal(), 1-α/2)
     for i in 1:nsim
         y = rand(d, n)
-        μ, σ, α = try
+        μ, σ, γ = try
             MLE(θ, 2., y)
         catch err
             NaN, NaN, NaN
         end
-        if μ === NaN || (α < 0 && α > 1)
+        if μ === NaN || (γ < 0 && γ > 1)
             sims[i] = NaN
         else
-            t = test(y, μ, σ*√(π/2), α)
+            t = test(y, μ, σ*√(π/2), γ)
             if size
-                if abs(t) > 1.96
+                if abs(t) > z
                     sims[i] = 1
                 end
             else

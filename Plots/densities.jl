@@ -18,21 +18,24 @@ labels = [format(feKurt, p) for p in kurt] |> (y -> reshape(y, 1,3));
 linestyles = [:solid :dash :dashdot];
 feAlpha = FormatExpr(L"\alpha = {1}")
 
-p1 = plot(x1, data_1, label = labels, color = "black",
+p1 = plot(x1, data_1, label = labels,
     linestyle = linestyles, grid = false, legend = false,
-    title = format(feAlpha, α1))
+    title = format(feAlpha, α1), linewidth = 2)
 
-p2 = plot(x2, data_2, label = labels, color = "black",
+p2 = plot(x2, data_2, label = labels,
     linestyle = linestyles, grid = false, legend = true,
-    title = format(feAlpha, α2))
+    title = format(feAlpha, α2), linewidth = 2)
 
 plot(p2, p1, layout = (1,2))
 p = plot!(size = (600, 250))
+p = plot!(size = (700, 400), legendfontsize=10,
+    xtickfontsize=10, ytickfontsize=10, titlefontsize = 20)
 
 savefig(p, "aepd.png")
 
 x = range(-4, 4, length = 500)
 data = [pdf.(Epd(0, 1, p), x) for p in kurt]
-p = plot(x, data, label = labels, color = "black",
-    linestyle = linestyles, grid = false, size = (300, 250))
+p = plot(x, data, label = labels, linewidth = 1.5,
+    linestyle = linestyles, grid = false, size = (500, 450),
+    legendfontsize=10, xtickfontsize=10, ytickfontsize=10)
 savefig(p, "epd.png")

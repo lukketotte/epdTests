@@ -5,10 +5,7 @@
 @everywhere using DataFrames, CSV, DataFramesMeta
 
 using KernelDensity, Plots, PlotThemes, LaTeXStrings
-theme(:default)
-
-
-
+theme(:juno)
 
 ## Power and size
 # TODO: have always assumed it to be 2. Need to fix
@@ -33,7 +30,7 @@ end
 end
 
 ## Simulation
-
+# TODO: simsize function has been changed, and αPar should not be used
 @everywhere function simulation(p::Array{T, 1}, n::Array{N, 1}, nsim::N;
     α::T = 0.05, twoSided = true) where {T, N <: Real}
     simData = DataFrame(n = repeat(n, inner = length(p)), p = repeat(p, length(n)), value = 0.)
@@ -59,12 +56,16 @@ end
 end
 
 # β₀ = pmap(p -> αPar(p, 50, nsim, true), kurt)
+kurt = range(2, 5, length = 30)
 pmap(p -> αPar(p, 50, nsim, true), kurt)
+
+# that is working
+pmap(p -> simSize(Epd(0, 1, p), 100, 1000, true, 0.05, 2.), kurt)
 
 # this one is just giving the size now?
 αPar(5., 1000, 100, true)
 
-simSize(Epd(0.0, 1.0, 2.), 100, 100, true, 0.05, 2.) |> mean
+simSize(Epd(0.0, 1.0, 2.), 100, 100, true, 0.05, 2.)
 
 @everywhere function simulation(p::T, n::Array{N, 1}, nsim::N, gridSize::N;
         gridEnd::T = 5., size::Bool = false, α::T = 0.05, twoSided = true) where {T, N <: Real}

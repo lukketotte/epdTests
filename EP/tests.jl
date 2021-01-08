@@ -7,6 +7,7 @@ using KernelDensity, Plots, PlotThemes
 import Base.rand
 theme(:juno)
 
+using Optim
 
 ## EPD mle
 function loglikEPD(θ, p, x) where {T <: Real}

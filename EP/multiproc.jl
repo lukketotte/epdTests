@@ -1,15 +1,19 @@
-# relative imports not working with everywhere include
 @everywhere include(joinpath(@__DIR__, "ep.jl"))
 @everywhere include(joinpath(@__DIR__, "aep.jl"))
 @everywhere include(joinpath(@__DIR__, "NormTest.jl"))
-@everywhere using .NormTest, .AEPmethods, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions, DataFrames
+@everywhere using .NormTest, .AEPmethods, .EPmethods, SpecialFunctions, Statistics, LinearAlgebra, Distributions
+@everywhere using DataFrames, CSV, DataFramesMeta
 
 using KernelDensity, Plots, PlotThemes, LaTeXStrings
 theme(:default)
 
 
+
+
 ## Power and size
-@everywhere function αPar(p::T, n::N = 50, nsim::N = 10000, size::Bool = false, α::T = 0.05) where {T, N <: Real}
+# TODO: have always assumed it to be 2. Need to fix
+@everywhere function αPar(p::T, n::N = 50, nsim::N = 10000,
+    size::Bool = false, α::T = 0.05) where {T, N <: Real}
     sim = simSize(Epd(0.0, 1.0, p), n, nsim, size, α, p)
     if size
         mean(sim)
@@ -18,7 +22,8 @@ theme(:default)
     end
 end
 
-@everywhere function αPar(p::T, θ::Array{T, 1}, n::N = 50, nsim::N = 10000, size::Bool = false, α::T = 0.05) where {T, N <: Real}
+@everywhere function αPar(p::T, θ::Array{T, 1}, n::N = 50,
+    nsim::N = 10000, size::Bool = false, α::T = 0.05) where {T, N <: Real}
     sim = simSize(Aepd(0.0, 1.0, p, θ[3]), n, nsim, θ, size, α)
     if size
         mean(sim)
@@ -28,56 +33,94 @@ end
 end
 
 ## Simulation
-res = Array{Float64, 1}[]
-for i in 1:10
-    print(string(i)*" ")
-    q = pmap(N -> αPar(2., [0, log(2), 0.7], n, N, false), [nsim for x in 1:4])
-    push!(res, vcat(q[1], q[2], q[3], q[4]))
-end
 
-@everywhere function simulation(p::Array{T, 1} = [1., 2., 3.], n::Array{N, 1} = [50, 100, 500, 1000, 2000],
-        size::Bool = false, α::T = 0.05; nsim::N = 10000) where {T, N <: Real}
+@everywhere function simulation(p::Array{T, 1}, n::Array{N, 1}, nsim::N;
+    α::T = 0.05, twoSided = true) where {T, N <: Real}
     simData = DataFrame(n = repeat(n, inner = length(p)), p = repeat(p, length(n)), value = 0.)
     for i in 1:length(n)
         print(string(n[i])*" ")
         for j in 1:length(p)
             res = Array{Float64, 1}[]
-            for i in 1:10
-                q = pmap(N -> αPar(p[j], n[i], N, false), [nsim for x in 1:4])
-                push!(res, vcat(q[1], q[2], q[3], q[4]))
+            for rep in 1:10
+                q = pmap(N -> αPar(p[j], n[i], N, false), [nsim for x in 1:5])
+                push!(res, reduce(vcat, q))
             end
-            z = quantile(Normal(), 1-α/2)
-            resAvg = map(i -> mean(abs.(res[i]) .> z), 1:10)
-            test[:, [:value]] .= ifelse.((test[!, :n] .== n[i]) .&( test[!, :p] .== p[j]), mean(resAvg), test[:, [:value]])
+            if twoSided
+                z = quantile(Normal(), 1-α/2)
+                resAvg = map(k -> mean(abs.(res[k]) .> z), 1:10) |> mean
+            else
+                z = quantile(Normal(), 1-α)
+                resAvg = map(k -> mean((res[k]) .> z), 1:10) |> mean
+            end
+            simData[:, [:value]] .= ifelse.((simData[!, :n] .== n[i]) .& (simData[!, :p] .== p[j]), mean(resAvg), simData[:, [:value]])
         end
     end
     simData
 end
 
-simulation(nsim = 10)
+# β₀ = pmap(p -> αPar(p, 50, nsim, true), kurt)
+pmap(p -> αPar(p, 50, nsim, true), kurt)
+
+# this one is just giving the size now?
+αPar(5., 1000, 100, true)
+
+simSize(Epd(0.0, 1.0, 2.), 100, 100, true, 0.05, 2.) |> mean
+
+@everywhere function simulation(p::T, n::Array{N, 1}, nsim::N, gridSize::N;
+        gridEnd::T = 5., size::Bool = false, α::T = 0.05, twoSided = true) where {T, N <: Real}
+
+    pGrid = range(p, gridEnd, length = gridSize)
+    simData = DataFrame(n = repeat(n, inner = gridSize), p = repeat(pGrid, length(n)), p0 = p, value = 0.)
+
+    for i in 1:length(n)
+        print(string(n[i])*" ")
+        res = Array{Float64, 1}[]
+        for rep in 1:10
+            q = pmap(N -> αPar(p, n[i], N, false), [nsim for x in 1:5])
+            push!(res, reduce(vcat, q))
+        end
+        if twoSided
+            z = quantile(Normal(), 1-α/2)
+            resAvg = map(k -> mean(abs.(res[k]) .> z), 1:10) |> mean
+        else
+            z = quantile(Normal(), 1-α)
+            resAvg = map(k -> mean((res[k]) .> z), 1:10) |> mean
+        end
+        simData[:, [:value]] .= ifelse.(simData[!, :n] .== n[i], mean(resAvg), simData[:, [:value]])
+    end
+    simData
+end
+
+test = simulation(1., [50, 100], 100, 30)
+@linq test |>
+    where(:n .== 50)
 
 
+pgrid = range(2, 5, length = 5)
+dat1 = DataFrame(n = repeat([50, 100], inner = 5), p = repeat(pgrid, 2), p₀ = 2)
+pgrid = range(1, 5, length = 5)
+dat2 = DataFrame(n = repeat([50, 100], inner = 5), p = repeat(pgrid, 2), p₀ = 1)
 
-p = [1., 2., 3.]
-n = [50, 100, 500, 1000, 2000]
+[dat1; dat2]
 
-repeat(n, inner = 3)
-repeat(p, 5)
-
-test = DataFrame(n = repeat(n, inner = 3), p = repeat(p, 5), value = 0.)
-
-test.value[1] = 0.1
-
-test.value[(test.p .=== 1.) .& (test.n .=== 50) ] = 0.5
-
-(test.p .=== 1.) .& (test.n .=== 50)
-
-test[:, [:value]] .= ifelse.((test[!, :n] .== 50) .&( test[!, :p] .== 2.), 0.6, test[:, [:value]])
+###
 
 
+sim2 = simulation([1., 2., 3.], [50, 100], 500; α = 0.01, twoSided = false)
+CSV.write("simsize_01.csv", sim2)
 
-n, nsim = 100, 10000;
-kurt = range(1, 5, length = 160)
+sim3 = simulation([1., 2., 3.], [50, 100, 500], 2500; α = 0.05, twoSided = false)
+CSV.write("simsize_01.csv", sim3)
+
+@linq sim3 |>
+    where(:p .== 3)
+
+
+## Simulate power
+
+
+n, nsim = 500, 1500;
+kurt = range(1, 3, length = 30)
 β₀ = pmap(p -> αPar(p, 50, nsim, true), kurt)
 β₁ = pmap(p -> αPar(p, 100, nsim, true), kurt)
 β₃ = pmap(p -> αPar(p, 200, nsim, true), kurt)
@@ -149,7 +192,8 @@ end
 
 res = map(i -> mean(abs.(res[i]) .> 1.96), 1:10)
 mean(res)
-
+push!(res, vcat(q))
+Array(q)
 n, nsim = 500, 10
 res = Array{Float64, 1}[]
 for i in 1:10
@@ -158,12 +202,16 @@ for i in 1:10
     push!(res, vcat(q[1], q[2], q[3], q[4]))
 end
 
+reduce(hcat, q)
+reduce(vcat, q)
+
 z = quantile(Normal(), 1-0.01/2)
 resAvg = map(i -> mean(abs.(res[i]) .> z), 1:10)
 mean(resAvg) |> println
 
-#
-
+q
+convert(Array{Float64, 1}, q)
+Array{Float64, 1}
 n, nsim = 500, 1000
 res = Array{Float64, 1}[]
 for i in 1:10

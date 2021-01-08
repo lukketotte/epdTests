@@ -157,17 +157,22 @@ function simSize(d::D, n::N, nsim::N, size::Bool = true, α::T = 0.05, p::T = 2.
     z = quantile(Normal(), 1-α/2)
     for i in 1:nsim
         y = rand(d, n)
-        if p !== 2.
+
+        if p == 1.
+            μ = median(y)
+            σ = mean(abs.(y .- μ))
+        elseif p == 2.
+            μ = mean(y)
+            σ = √var(y)
+        else
             μ, σ = try
                 MleEpd([0, log(2.)], p, y)
             catch err
                 NaN, NaN, NaN
             end
             σ !== NaN ? exp(σ) : NaN
-        else
-            μ = mean(y)
-            σ = √var(y)
         end
+
         if μ === NaN
             sims[i] = NaN
         else

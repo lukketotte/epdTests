@@ -30,83 +30,47 @@ end
 end
 
 ## Simulation
-# TODO: simsize function has been changed, and αPar should not be used
 @everywhere function simulation(p::Array{T, 1}, n::Array{N, 1}, nsim::N;
     α::T = 0.05, twoSided = true) where {T, N <: Real}
     simData = DataFrame(n = repeat(n, inner = length(p)), p = repeat(p, length(n)), value = 0.)
     for i in 1:length(n)
         print(string(n[i])*" ")
         for j in 1:length(p)
-            res = Array{Float64, 1}[]
+            res = zeros(10)
             for rep in 1:10
-                q = pmap(N -> αPar(p[j], n[i], N, false), [nsim for x in 1:5])
-                push!(res, reduce(vcat, q))
+                q = pmap(N -> simSize(Epd(0.0, 1.0, p[j]), n[i], N; twoSided = true, α = α, p = p[j]), [nsim for x in 1:5])
+                res[i] = mean(q)
             end
-            if twoSided
-                z = quantile(Normal(), 1-α/2)
-                resAvg = map(k -> mean(abs.(res[k]) .> z), 1:10) |> mean
-            else
-                z = quantile(Normal(), 1-α)
-                resAvg = map(k -> mean((res[k]) .> z), 1:10) |> mean
-            end
-            simData[:, [:value]] .= ifelse.((simData[!, :n] .== n[i]) .& (simData[!, :p] .== p[j]), mean(resAvg), simData[:, [:value]])
+            simData[:, [:value]] .= ifelse.((simData[!, :n] .== n[i]) .& (simData[!, :p] .== p[j]), mean(res), simData[:, [:value]])
         end
     end
     simData
 end
 
-# β₀ = pmap(p -> αPar(p, 50, nsim, true), kurt)
-kurt = range(2, 5, length = 30)
-pmap(p -> αPar(p, 50, nsim, true), kurt)
-
-# that is working
-pmap(p -> simSize(Epd(0, 1, p), 100, 1000, true, 0.05, 2.), kurt)
-
-# this one is just giving the size now?
-αPar(5., 1000, 100, true)
-
-simSize(Epd(0.0, 1.0, 2.), 100, 100, true, 0.05, 2.)
-
 @everywhere function simulation(p::T, n::Array{N, 1}, nsim::N, gridSize::N;
-        gridEnd::T = 5., size::Bool = false, α::T = 0.05, twoSided = true) where {T, N <: Real}
+        gridEnd::T = 5., α::T = 0.05, twoSided = true) where {T, N <: Real}
 
     pGrid = range(p, gridEnd, length = gridSize)
     simData = DataFrame(n = repeat(n, inner = gridSize), p = repeat(pGrid, length(n)), p0 = p, value = 0.)
 
     for i in 1:length(n)
         print(string(n[i])*" ")
-        res = Array{Float64, 1}[]
-        for rep in 1:10
-            q = pmap(N -> αPar(p, n[i], N, false), [nsim for x in 1:5])
-            push!(res, reduce(vcat, q))
-        end
-        if twoSided
-            z = quantile(Normal(), 1-α/2)
-            resAvg = map(k -> mean(abs.(res[k]) .> z), 1:10) |> mean
-        else
-            z = quantile(Normal(), 1-α)
-            resAvg = map(k -> mean((res[k]) .> z), 1:10) |> mean
-        end
-        simData[:, [:value]] .= ifelse.(simData[!, :n] .== n[i], mean(resAvg), simData[:, [:value]])
+        res = pmap(kurt -> simSize(Epd(0., 1., kurt), n[i], nsim; twoSided = twoSided, α = α, p = p), pGrid)
+        simData[simData.n .== n[i], :value] = res
     end
-    simData
+    simData, pGrid
 end
 
+# size
 test = simulation(1., [50, 100], 100, 30)
-@linq test |>
-    where(:n .== 50)
 
-
-pgrid = range(2, 5, length = 5)
-dat1 = DataFrame(n = repeat([50, 100], inner = 5), p = repeat(pgrid, 2), p₀ = 2)
-pgrid = range(1, 5, length = 5)
-dat2 = DataFrame(n = repeat([50, 100], inner = 5), p = repeat(pgrid, 2), p₀ = 1)
-
-[dat1; dat2]
+# power
+test, kurt = simulation(2., [50, 100], 2000, 10)
+test
 
 ###
 
-
+##  size
 sim2 = simulation([1., 2., 3.], [50, 100], 500; α = 0.01, twoSided = false)
 CSV.write("simsize_01.csv", sim2)
 
@@ -118,7 +82,11 @@ CSV.write("simsize_01.csv", sim3)
 
 
 ## Simulate power
+β₁, grid₁ = test, kurt = simulation(1., [50, 100, 500], 10000, 20; gridEnd = 4., α = 0.01, twoSided = false)
+β₂, grid₂ = test, kurt = simulation(2., [50, 100, 500], 10000, 20; gridEnd = 5., α = 0.01, twoSided = false)
+β₃, grid₃ = test, kurt = simulation(3., [50, 100, 500], 10000, 20; gridEnd = 6., α = 0.01, twoSided = false)
 
+CSV.write("power001.csv", [β₁; β₂; β₃])
 
 n, nsim = 500, 1500;
 kurt = range(1, 3, length = 30)

@@ -153,11 +153,12 @@ Computes empirical level of C(α) test for the EPD
 """
 function simSize(d::D, n::N, nsim::N; twoSided::Bool = true, α::T = 0.05, p::T = 2.) where
     {D <: ContinuousUnivariateDistribution, N <: Integer, T<: Real}
+
     sims = [0. for x in 1:nsim]
     z = twoSided ? quantile(Normal(), 1-α/2) : quantile(Normal(), 1-α)
+
     for i in 1:nsim
         y = rand(d, n)
-
         if p == 1.
             μ = median(y)
             σ = mean(abs.(y .- μ))
@@ -177,12 +178,8 @@ function simSize(d::D, n::N, nsim::N; twoSided::Bool = true, α::T = 0.05, p::T 
             sims[i] = NaN
         else
             t = test(y, μ, p^(1/p) * gamma(1 + 1/p) * σ, p = p)
-            if size
-                if abs(t) > z
-                    sims[i] = 1
-                end
-            else
-                sims[i] = t
+            if (twoSided ? abs(t) : t) > z
+                sims[i] = 1
             end
         end
     end

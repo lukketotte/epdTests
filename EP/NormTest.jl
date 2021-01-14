@@ -151,7 +151,7 @@ end
 """
 Computes empirical level of C(α) test for the EPD
 """
-function simSize(d::D, n::N, nsim::N; twoSided::Bool = true, α::T = 0.05, p::T = 2.) where
+function simSize(d::D, n::N, nsim::N, p::T = 2.; twoSided::Bool = true, α::T = 0.05) where
     {D <: ContinuousUnivariateDistribution, N <: Integer, T<: Real}
 
     sims = [0. for x in 1:nsim]
@@ -181,6 +181,54 @@ function simSize(d::D, n::N, nsim::N; twoSided::Bool = true, α::T = 0.05, p::T 
             if (twoSided ? abs(t) : t) > z
                 sims[i] = 1
             end
+        end
+    end
+    sims[sims .!== NaN] |> mean
+end
+
+"""
+Simulations for the Micheaux paper based on the EPD
+"""
+function simSize(n::N, nsim::N, p::T = 2.; twoSided::Bool = true, α::T = 0.05) where
+    {N <: Integer, T<: Real}
+
+    sims = [0. for x in 1:nsim]
+    z = twoSided ? quantile(Normal(), 1-α/2) : quantile(Normal(), 1-α)
+
+    for i in 1:nsim
+        y = rand(Epd(0., 1., p), n)
+        y = (y .- mean(y)) ./ √(var(y))
+        K₂ = mean(y.^2 .* log.(abs.(y)))
+        t = √n * (K₂ - (2 - log(2) + digamma(1))/2) / √((3*π^2 - 28)/8)
+        if (twoSided ? abs(t) : t) > z
+            sims[i] = 1
+        end
+    end
+    sims[sims .!== NaN] |> mean
+end
+
+"""
+Simulations for the Micheaux paper or C(α) test based on any distribution d
+"""
+function simSize(d::D, n::N, nsim::N, Cα::Bool; twoSided::Bool = true, α::T = 0.05) where
+    {D <: ContinuousUnivariateDistribution, N <: Integer, T<: Real}
+
+    sims = [0. for x in 1:nsim]
+    z = twoSided ? quantile(Normal(), 1-α/2) : quantile(Normal(), 1-α)
+
+    for i in 1:nsim
+        y = rand(d, n)
+        μ = mean(y)
+        σ = √var(y)
+        if Cα
+            t = test(y, μ, 2^(1/2) * gamma(1 + 1/2) * σ)
+        else
+            y = (y .- μ) ./ √σ
+            K₂ = mean(y.^2 .* log.(abs.(y)))
+            t = √n * (K₂ - (2 - log(2) + digamma(1))/2) / √((3*π^2 - 28)/8)
+        end
+        if (twoSided ? abs(t) : t) > z
+            sims[i] = 1
         end
     end
     sims[sims .!== NaN] |> mean

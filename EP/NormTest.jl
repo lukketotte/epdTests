@@ -132,20 +132,24 @@ Computes the C(α) test for the EPD
 """
 function test(y::Array{T, 1}, μ::T, σ::T; p::T = 2.) where {T <: Real}
     n = length(y)
-    S_p, S_σ = S(y, μ, σ, p = p)
-    β, V = components(p, σ, μ)
-    ((sum(S_p) - β * sum(S_σ)) / √(n*V))
+    S_p, S_σ = S(y, μ, σ; p = p)
+    # β, V = components(p, σ, μ)
+    # ((sum(S_p) - β * sum(S_σ)) / √(n*V))
+    V = (p+1)/p^4 * trigamma((p+1)/p) - 1/p^3
+    β = - σ / 4
+    sum(S_p .- β .* S_σ) / √(n*V)
 end
 
 """
 Computes the C(α) test for the SEPD
-"""
+
 function test(y::Array{T, 1}, μ::T, σ::T, α::T) where {T <: Real}
     n = length(y)
     S_p, S_σ = S(y, μ, σ, α)
     β, V = components(2., σ, μ, α)
     ((sum(S_p) - β * sum(S_σ)) / √(n*V))
 end
+"""
 
 # TODO: why does e.g. d::Epd not work when using import?
 """
@@ -221,9 +225,9 @@ function simSize(d::D, n::N, nsim::N, Cα::Bool; twoSided::Bool = true, α::T = 
         μ = mean(y)
         σ = √var(y)
         if Cα
-            t = test(y, μ, 2^(1/2) * gamma(1 + 1/2) * σ)
+            t = test(y, μ, 2^(1/2) * gamma(1 + 1/2) * σ; p = 2.)
         else
-            y = (y .- μ) ./ √σ
+            y = (y .- μ) ./ σ
             K₂ = mean(y.^2 .* log.(abs.(y)))
             t = √n * (K₂ - (2 - log(2) + digamma(1))/2) / √((3*π^2 - 28)/8)
         end

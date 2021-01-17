@@ -1,6 +1,6 @@
 module NormTest
 
-export test, simSize, L, R, S, IM, components
+export test, simSize, L, R, S, IM, components, simSizeLaplace
 
 include("ep.jl")
 include("aep.jl")
@@ -235,8 +235,33 @@ function simSize(d::D, n::N, nsim::N, Cα::Bool; twoSided::Bool = true, α::T = 
             sims[i] = 1
         end
     end
-    sims[sims .!== NaN] |> mean
+    mean(sims)
 end
+
+"""
+For comparison with the Laplace test, this is based on the chi-squared so no two-sided tests
+"""
+function simSizeLaplace(d::D, n::N, nsim::N, Cα::Bool, critical::T; C₂::T = 1200.) where
+    {D <: ContinuousUnivariateDistribution, N <: Integer, T<: Real}
+    sims = [0. for x in 1:nsim]
+    for i in 1:nsim
+        y = rand(d, n)
+        if Cα
+            μ = median(y)
+            σ = mean(abs.(y .- μ))
+            t = test(y, μ, σ, p = 1.)
+        else
+            μ = mean(y)
+            ζ = √2 * mean(abs.(y .- median(y)))
+            v₂ = mean((y .- μ).^4) / ζ^4
+            t = √n * (v₂ - 6) / √(C₂)
+        end
+        # don't know what direction the tests takes
+        sims[i] = t^2 >= critical ? 1 : 0
+    end
+    mean(sims)
+end
+
 
 """
 Computes empirical level of C(α) test for the SEPD

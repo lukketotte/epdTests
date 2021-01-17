@@ -1,7 +1,7 @@
+using Distributed
 @everywhere include(joinpath(@__DIR__, "ep.jl"))
-@everywhere include(joinpath(@__DIR__, "aep.jl"))
 @everywhere include(joinpath(@__DIR__, "NormTest.jl"))
-@everywhere using .NormTest, .AEPmethods, .EPmethods
+@everywhere using .NormTest,.EPmethods
 @everywhere using SpecialFunctions, Statistics, LinearAlgebra, Distributions
 @everywhere using DataFrames, CSV, DataFramesMeta
 
@@ -58,20 +58,20 @@ end
 
 
 ## testing
-twoSided = false
-α = 0.05
-z = twoSided ? quantile(Normal(), 1-α/2) : quantile(Normal(), 1-α)
-t = -2.1
-(twoSided ? abs(t) : t) > z
+simSizeLaplace(Laplace(0.), 200, 30000, true, quantile(Chisq(1), 1-0.05))
+simSizeLaplace(Laplace(0.), 500, 10000, false, quantile(Chisq(1), 1-0.05); C₂ = 1400.)
+
+simSizeLaplace(TDist(4), 100, 10000, true, quantile(Chisq(1), 1-0.05))
+simSizeLaplace(TDist(4), 100, 10000, false, quantile(Chisq(1), 1-0.033))
+
+simSize(Epd(0., 1., 1.), 500, 1000, 1.)
 
 
-# t-dist
-quantile(Normal(), 1-0.05/2)
-simSize(TDist(100), 20, 1000, true)
-simSize(TDist(100), 20, 1000, false)
+simSizeLaplace(Epd(0., 1., 1.), 1000, 5000, true, quantile(Normal(), 1-0.05))
+
+simSize(TDist(3), 100, 1000, true)
 
 simulation([50, 100], 100, 10; twoSided = false)
-
 # EPD
 simSize(Epd(0., 1., 2.5), 500, 2000, true)
 simSize(Epd(0., 1., 2.5), 500, 2000, false)
@@ -97,6 +97,32 @@ CSV.write("simsize_01.csv", sim3)
 CSV.write("power001.csv", [β₁; β₂; β₃])
 # CSV.write("powerM.csv", βₘ)
 
+## Comparison with Laplace test
+# EPD
+N, nsim = 500, 10000
+p = range(1, 2, length = 9)
+simDat = DataFrame(p = p, value = 0.0)
+β = pmap(kurt -> simSizeLaplace(Epd(0., 1., kurt), 500, 10000, false, quantile(Chisq(1), 1-0.05)), p)
+simDat.value = β
+
+CSV.write("powerLapGin.csv", simDat)
+
+#Tdist
+# something is wack with sims
+N, nsim = [20, 50, 100, 200], 10000
+α = [0.04, 0.044, 0.48, 0.05]
+α = [0.01, 0.024, 0.033, 0.04]
+ν = [1, 2, 3, 4, 5, 6, 7]
+simDat = DataFrame(n = repeat(N, inner = length(ν)), df = repeat(ν, length(N)), value = 0.0)
+for i in 1:length(N)
+    β = pmap(df -> simSizeLaplace(TDist(df), N[i], 10000, true, quantile(Chisq(1), 1-α[i])), ν)
+    simDat[simDat.n .== N[i], :value] = β
+end
+simDat
+CSV.write("powerLapTOurs.csv", simDat)
+
+β = pmap(df -> simSizeLaplace(TDist(df), 200, 10000, true, quantile(Chisq(1), 1-0.05)), ν)
+println(β)
 ## comparison with T dist
 N, nsim = [20, 50, 100, 200], 10000
 ν = [1, 2, 3, 4, 5, 7, 10, 15, 20]

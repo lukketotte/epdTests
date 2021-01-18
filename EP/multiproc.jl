@@ -1,4 +1,4 @@
-using Distributed
+# using Distributed
 @everywhere include(joinpath(@__DIR__, "ep.jl"))
 @everywhere include(joinpath(@__DIR__, "NormTest.jl"))
 @everywhere using .NormTest,.EPmethods
@@ -56,13 +56,18 @@ end
     simData, pGrid
 end
 
+## Calculation checks
+NormTest.components(1., 1., 0.)
 
 ## testing
-simSizeLaplace(Laplace(0.), 200, 30000, true, quantile(Chisq(1), 1-0.05))
-simSizeLaplace(Laplace(0.), 500, 10000, false, quantile(Chisq(1), 1-0.05); C₂ = 1400.)
+# estimated critical values for n = 20, 50, 100, 200
+αLapGel = [0.51, 0.235, 0.135, 0.083]
+αLap = [0.0625, 0.057, 0.053, 0.051]
+simSizeLaplace(Laplace(0.), 200, 100000, true, quantile(Chisq(1), 1-0.051))
+simSizeLaplace(Laplace(0.), 200, 30000, false, quantile(Chisq(1), 1-0.083); C₂ = 1400.)
 
-simSizeLaplace(TDist(4), 100, 10000, true, quantile(Chisq(1), 1-0.05))
-simSizeLaplace(TDist(4), 100, 10000, false, quantile(Chisq(1), 1-0.033))
+simSizeLaplace(Cauchy(), 100, 100000, true, quantile(Chisq(1), 1-αLap[3]))
+simSizeLaplace(Cauchy(), 50, 100000, false, quantile(Chisq(1), 1-αLapGel[2]))
 
 simSize(Epd(0., 1., 1.), 500, 1000, 1.)
 
@@ -72,9 +77,12 @@ simSizeLaplace(Epd(0., 1., 1.), 1000, 5000, true, quantile(Normal(), 1-0.05))
 simSize(TDist(3), 100, 1000, true)
 
 simulation([50, 100], 100, 10; twoSided = false)
-# EPD
-simSize(Epd(0., 1., 2.5), 500, 2000, true)
-simSize(Epd(0., 1., 2.5), 500, 2000, false)
+
+# EPD, MC estimated critical values
+αNorm = [0.1, 0.069, 0.059, 0.053]
+αNormMitch = [0.054, 0.053, 0.05, 0.05]
+pmap(nsim -> simSize(Epd(0., 1., 2.), 200, nsim, true; α = 0.053), repeat([10000], 5)) |> mean
+pmap(nsim -> simSize(Epd(0., 1., 2.), 100, nsim, false; α = 0.05), repeat([10000], 5)) |> mean
 
 ##  size
 sim2 = simulation([1., 2., 3.], [50, 100], 500; α = 0.01, twoSided = false)
@@ -99,50 +107,50 @@ CSV.write("power001.csv", [β₁; β₂; β₃])
 
 ## Comparison with Laplace test
 # EPD
-N, nsim = 500, 10000
-p = range(1, 2, length = 9)
-simDat = DataFrame(p = p, value = 0.0)
-β = pmap(kurt -> simSizeLaplace(Epd(0., 1., kurt), 500, 10000, false, quantile(Chisq(1), 1-0.05)), p)
-simDat.value = β
+N, nsim = [100, 200], 50000
+p = range(0.5, 2, length = 10)
+simDat = DataFrame(n = repeat(N, inner = length(p)), p = repeat(p, length(N)), value = 0.0)
+β = pmap(kurt -> simSizeLaplace(Epd(0., 1., kurt), N[2], 50000, false, quantile(Chisq(1), 1-αLapGel[4])), p)
+simDat[simDat.n .== N[2], :value] = β
 
-CSV.write("powerLapGin.csv", simDat)
+CSV.write("powerLapGel.csv", simDat)
+# EPD for n = 100, 200
 
 #Tdist
-# something is wack with sims
 N, nsim = [20, 50, 100, 200], 10000
-α = [0.04, 0.044, 0.48, 0.05]
+α = [0.04, 0.044, 0.048, 0.05]
 α = [0.01, 0.024, 0.033, 0.04]
 ν = [1, 2, 3, 4, 5, 6, 7]
 simDat = DataFrame(n = repeat(N, inner = length(ν)), df = repeat(ν, length(N)), value = 0.0)
 for i in 1:length(N)
-    β = pmap(df -> simSizeLaplace(TDist(df), N[i], 10000, true, quantile(Chisq(1), 1-α[i])), ν)
+    β = pmap(df -> simSizeLaplace(TDist(df), N[i], 50000, true, quantile(Chisq(1), 1-αLap[i])), ν)
     simDat[simDat.n .== N[i], :value] = β
 end
-simDat
 CSV.write("powerLapTOurs.csv", simDat)
 
-β = pmap(df -> simSizeLaplace(TDist(df), 200, 10000, true, quantile(Chisq(1), 1-0.05)), ν)
-println(β)
+simSizeLaplace(Cauchy(), 50, 10000, true, quantile(Chisq(1), 1-0.044))
+simSizeLaplace(Cauchy(), 100, 10000, false, quantile(Chisq(1), 1-0.024))
+
 ## comparison with T dist
-N, nsim = [20, 50, 100, 200], 10000
+N, nsim = [20, 50, 100, 200], 50000
 ν = [1, 2, 3, 4, 5, 7, 10, 15, 20]
 simDat = DataFrame(n = repeat(N, inner = length(ν)), df = repeat(ν, length(N)), value = 0.0)
-for n in N
-    β = pmap(df -> simSize(TDist(df), n, nsim, false), ν)
-    simDat[simDat.n .== n, :value] = β
+for i in 1:length(N)
+    β = pmap(df -> simSize(TDist(df), N[i], nsim, true; α = αNorm[i]), ν)
+    simDat[simDat.n .== N[i], :value] = β
 end
-CSV.write("powerMich.csv", simDat)
+CSV.write("powerNormOursT.csv", simDat)
 
 ## comparison using the EPD
 p  = range(1., 4, length = 20)
 simDat = DataFrame(n = repeat(N, inner = length(p)), p = repeat(p, length(N)), value = 0.0)
 
-for n in N
-    β = pmap(kurt -> simSize(Epd(0.0, 1.0, kurt), n, nsim, true), p)
-    simDat[simDat.n .== n, :value] = β
+for i in 1:length(N)
+    β = pmap(kurt -> simSize(Epd(0.0, 1.0, kurt), N[i], nsim, false; α = αNormMitch[i]), p)
+    simDat[simDat.n .== N[i], :value] = β
 end
 
-CSV.write("powerCa.csv", simDat)
+CSV.write("powerMich.csv", simDat)
 
 #simData[simData.n .== n[i], :value] = res
 simDat[simDat.n .== 20, :value] = powerTm

@@ -57,8 +57,22 @@ end
 end
 
 ## Calculation checks
-NormTest.components(1., 1., 0.)
+_, v = NormTest.components(2., 1., 0.)
 
+y = [0.5, 1.1, -0.22, 0.1, 0.2]
+σ = sum(abs.(y .- median(y)))/length(y)
+
+sp, ss = S(y, median(y), σ; p = 1.)
+_, v = NormTest.components(2., √(σ * π/2), mean(y))
+
+sum(ss)
+
+sum(sp) / √(4 * v)
+test(y, mean(y), √(σ * π/2))
+
+
+
+v*4
 ## testing
 # estimated critical values for n = 20, 50, 100, 200
 αLapGel = [0.51, 0.235, 0.135, 0.083]

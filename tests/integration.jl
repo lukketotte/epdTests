@@ -6,6 +6,43 @@ function f(x::T, r::T = -.95, m::T = .0, p::T =.5) where {T <: Real}
     x^((1+r)/p - 1) * (log(x))^m * exp(-x)
 end
 
+## paper
+function h(x::T, m::T = 2., p::T = 2.) where {T <: Real}
+    k = p/(gamma(m/(2*p))*2^(m/(2*p)))
+    k * log(x)^2 * x^2 * x^(m/2-1) * exp(-0.5 * x^p)
+end
+
+# mine
+function h(x::T, p::T = 2.) where {T <: Real}
+    k = p/(gamma(1/p)*2^(1/p))
+    k * log(x)^2 * x^2 * exp(-0.5 * x^p)
+end
+
+# sub x = u^p, gives the same so far so good
+function h(x::T, p::T = 2.) where {T <: Real}
+    k = 1/(gamma(1/p)*2^(1/p) * p^2)
+    # k * log(x)^2 * x^2 * exp(-0.5 * x^p)
+    k * x^((1+2)/p - 1) * log(x)^2 * exp(-0.5*x)
+end
+
+# sub y = x/2
+function h(x::T, p::T = 2.) where {T <: Real}
+    k = 2/(gamma(1/p) * p^2)
+    x^((1+2)/p - 1) * log(2*x)^2*exp(-x)
+end
+
+quadgk(x-> h(x), 0, Inf)
+
+p = 2
+a = (1+p)/p
+2*(log(2)^2 + digamma(a) * (log(4) + digamma(a)) + trigamma(a))/p^3
+2/p^3 * (log(2)^2 + trigamma(a) + digamma((1+p)/p)^2 + log(4) * digamma(a))
+log(4) * digamma(a)
+
+digamma(a)
+
+gamma(0.5) * (1 + digamma(1/2)/2)
+
 quadgk(x-> f(x, 2.0 - 1, 1., 2.), 0, Inf)
 digamma(1)/(2*gamma(1 + 1/2))
 
